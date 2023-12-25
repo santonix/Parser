@@ -1,17 +1,28 @@
- def imageName = 'mlabouardy/movies-parser'
-node('workers') {
-    stage('checkout') {
-        checkout scm
-    }
-    def imageTest= docker.build("${imageName}-test", "-f Dockerfile.test .")
-    stage ('Quality Tests') {
-        imageTest.inside{
-            sh 'golint'
+def imageName = 'mlabouardy/movies-parser'
+
+pipeline {
+    agent {
+        docker {
+            image 'docker:latest'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
         }
-      stage ('Unit Tests') {
-          imageTest.inside{
-              sh 'go test'
-          }
-      }
     }
-}           
+    stages {
+        stage('checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        stage('Build and Test') {
+            steps {
+                script {
+                    def imageTest = docker.build("${imageName}-test", "-f Dockerfile.test .")
+                    imageTest.inside {
+                        sh 'golint'
+                        sh 'go test'
+                    }
+                }
+            }
+        }
+    }
+}
